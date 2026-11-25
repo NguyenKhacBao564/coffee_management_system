@@ -1,0 +1,9 @@
+-r requirements-offline.txt
+av==19.0.1
+onnxruntime==1.23.2
+PyYAML==6.0.3
+sqlalchemy==2.0.43
+psycopg[binary]==3.2.10
+pydantic-settings==2.11.0
+fastapi==0.118.2
+argon2-cffi==25.1.0

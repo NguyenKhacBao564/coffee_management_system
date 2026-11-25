@@ -1,0 +1,13 @@
+{
+  "camera_id": "camera-example",
+  "roi": [[0.25, 0.40], [0.80, 0.40], [0.80, 0.98], [0.25, 0.98]],
+  "roi_status": "example_only_replace_with_camera_specific_polygon",
+  "sample_hz": 2,
+  "plate_attempt_interval_seconds": 3,
+  "max_plate_attempts": 12,
+  "max_ocr_reads": 8,
+  "max_saved_plate_crops": 4,
+  "consistent_reads": 3,
+  "consensus_ratio": 0.8,
+  "cpu_threads": 2
+}

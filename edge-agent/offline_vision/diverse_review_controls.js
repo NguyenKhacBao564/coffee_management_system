@@ -1,0 +1,42 @@
+// D05j adapter for the existing D05b native-image/bbox editor.
+const storageKey='d05j-review-v2:'+initial.dataset_id;
+const coreRender=render, coreChange=change;
+let restoring=false,saveTimer;
+function persist(){clearTimeout(saveTimer);saveTimer=setTimeout(()=>{try{localStorage.setItem(storageKey,JSON.stringify({data,index}));$('autosave').textContent='Đã tự lưu trên trình duyệt · '+new Date().toLocaleTimeString()}catch(e){$('autosave').textContent='Tự lưu lỗi: '+e.message+' — hãy xuất JSON'}},150)}
+function assertInventory(parsed){
+ if(parsed.dataset_id!==initial.dataset_id||parsed.frames.length!==initial.frames.length)throw Error('JSON thuộc bộ ảnh khác');
+ const base=new Map(initial.frames.map(f=>[f.sample_id,f]));const seen=new Set();
+ for(const f of parsed.frames){const b=base.get(f.sample_id);if(!b||seen.has(f.sample_id))throw Error('Danh sách ảnh khác');seen.add(f.sample_id);
+ for(const k of ['scene_hash','image_path','image_sha256','source_id','width','height','media_seconds','frame_index','source_suggestions','suggested_plates'])if(JSON.stringify(f[k])!==JSON.stringify(b[k]))throw Error('Nguồn/gợi ý bất biến khác: '+k);
+ if(typeof f.scene_hash!=='string')throw Error('scene_hash cần là chuỗi');
+ for(const a of f.annotations){if(a.label_origin!=='manual_review'||a.bbox.length!==4||!a.bbox.every(Number.isInteger)||!(0<=a.bbox[0]&&a.bbox[0]<a.bbox[2]&&a.bbox[2]<=f.width&&0<=a.bbox[1]&&a.bbox[1]<a.bbox[3]&&a.bbox[3]<=f.height))throw Error('BBox/nguồn nhãn không hợp lệ')}
+ }
+}
+render=function(){coreRender();const f=frame();$('source-hint').textContent=(f.source_suggestions||[]).map(x=>x.text).join(' / ')||'Không có gợi ý chuỗi';$('source-status').textContent='Quyết định: '+(f.source_decision||'pending')+' · bbox/nhãn chưa xác nhận vẫn pending';
+ const start=Math.floor(index/20)*20;$('frame').replaceChildren();data.frames.slice(start,start+20).forEach((x,k)=>{let o=document.createElement('option');o.value=start+k;o.textContent=`${start+k+1}. ${x.sample_id} · ${x.reviewed?'đã xem':'pending'}`;$('frame').append(o)});$('frame').value=index;$('page').value=1+Math.floor(index/20);$('page-total').textContent='/ '+Math.ceil(data.frames.length/20)+' trang (20 ảnh/trang)';
+ const a=annotation();$('visible-text').value=a?.visible_text??'';for(const k of ['plate_color','occlusion','vehicle_type'])$(k).value=a?.condition_tags?.[k]??f.condition_tags?.[k]??'pending';
+ const selectedProposal=$('proposal').value; $('proposal').replaceChildren();(f.suggested_plates||[]).forEach((p,i)=>{let o=document.createElement('option');o.value=i;o.textContent=`${i+1}: ${p.bbox.join(', ')} · score ${p.score===null?'không có (bbox tham chiếu thủ công)':p.score.toFixed(3)}`;$('proposal').append(o)});
+ if(selectedProposal)$('proposal').value=selectedProposal;previewProposal(); if(!restoring)persist();
+};
+function previewProposal(){const p=frame().suggested_plates?.[Number($('proposal').value)];if(!p||!img.complete||!img.naturalWidth){$('proposal-crop').removeAttribute('src');$('proposal-size').textContent='';return}const f=frame();let [x,y,r,b]=p.bbox.map((v,k)=>Math.max(0,Math.min(k%2?f.height:f.width,Math.round(v))));const c=document.createElement('canvas');c.width=r-x;c.height=b-y;if(c.width<=0||c.height<=0)return;c.getContext('2d').drawImage(img,x,y,r-x,b-y,0,0,r-x,b-y);$('proposal-crop').src=c.toDataURL('image/png');$('proposal-crop').style.width=(2*c.width)+'px';$('proposal-size').textContent=`Native ${c.width}×${c.height}px · hiển thị 2×, không thêm chi tiết · chưa phải bbox xác nhận`;}
+$('proposal').onchange=previewProposal;
+change=function(n){coreChange(n);if(frame().annotations.length){active=0;render()}};
+$('accept-box').onclick=()=>{const p=frame().suggested_plates?.[Number($('proposal').value)];if(!p){message('Không có bbox đề xuất. Hãy vẽ thủ công.');return}const f=frame();const bbox=p.bbox.map((v,k)=>Math.max(0,Math.min(k%2?f.height:f.width,Math.round(v))));if(bbox[2]<=bbox[0]||bbox[3]<=bbox[1])return;f.annotations.push({annotation_id:f.sample_id+'-manual-'+Date.now(),kind:'plate',bbox,readability:'pending',plate_text:'',visible_text:'',layout:'pending',split_y:null,vehicle_group_id:'',label_origin:'manual_review',notes:'Người dùng xác nhận bbox đề xuất D05f'});active=f.annotations.length-1;f.reviewed=false;f.annotations_complete=false;render()};
+function decide(mode){const f=frame(),a=annotation();if(mode==='no_plate'){if(f.annotations.some(x=>x.kind==='plate')){message('Còn bbox biển. Xóa bbox sau khi xem ảnh trước khi chọn Không có biển.');return}f.plate_presence='no_plate';f.reviewed=true;f.annotations_complete=true;f.source_decision=mode;data.label_origin='manual_review';render();return}
+ if(!a||a.kind!=='plate'){message('Vẽ/chỉnh bbox hoặc xác nhận một bbox đề xuất trước.');return}
+ if(mode==='edit'){if(!a.plate_text)a.plate_text=f.source_suggestions?.[0]?.text??'';a.readability='pending';f.reviewed=false;f.source_decision='editing';a.source_review_action='edit';render();$('text').focus();return}
+ if(mode==='correct'){if(!a.plate_text.trim()&&new Set((f.source_suggestions||[]).map(s=>s.text)).size>1){message('Ảnh trùng có gợi ý chuỗi bất đồng. Nhập bản đọc thủ công rồi xác nhận.');return}if(!a.plate_text.trim())a.plate_text=f.source_suggestions?.[0]?.text??'';if(!a.plate_text.trim()||a.plate_text.includes('?')||!['single-line','two-line'].includes(a.layout)||(a.layout==='two-line'&&(!Number.isInteger(a.split_y)||!(a.bbox[1]<a.split_y&&a.split_y<a.bbox[3])))){message('Đọc chắc cần nội dung, bố cục, đường tách hai dòng. Có ký tự che: điền visible_text với ? và chọn Không đọc được.');return}a.readability='readable';a.visible_text=a.plate_text;f.source_decision=a.source_review_action==='edit'?'edited_confirmed':(f.source_suggestions?.length?'source_correct_confirmed':'manual_confirmed');a.source_review_action??='correct'}
+ if(mode==='unreadable'){a.readability='unreadable';a.plate_text='';f.source_decision='unreadable'}
+ f.reviewed=true;f.plate_presence='plate';f.annotations_complete=false;data.label_origin='manual_review';message('Đã xác nhận mục đang chọn. Nếu đã vẽ mọi biển, đánh dấu đầy đủ frame.');render();
+}
+for(const mode of ['correct','edit','unreadable','no_plate'])$('decide-'+mode).onclick=()=>decide(mode);
+$('visible-text').oninput=()=>{const a=annotation();if(!a)return;a.visible_text=$('visible-text').value;frame().reviewed=false;frame().source_decision='pending';persist()};
+for(const k of ['plate_color','occlusion','vehicle_type'])$(k).onchange=()=>{const a=annotation();if(!a){message('Chọn bbox trước khi gán điều kiện cho từng biển.');render();return}a.condition_tags??=structuredClone(frame().condition_tags??{});a.condition_tags[k]=$(k).value;persist()};
+$('page').onchange=()=>change((Number($('page').value)-1)*20);$('page-prev').onclick=()=>change(Math.max(0,Math.floor(index/20)-1)*20);$('page-next').onclick=()=>change((Math.floor(index/20)+1)*20);
+for(const id of ['readability','text','layout','split-y','vehicle-group','notes','capture-group','split','presence','complete'])$(id).addEventListener('input',()=>{frame().source_decision='pending';persist()});
+$('load').onchange=async()=>{try{const parsed=JSON.parse(await $('load').files[0].text());assertInventory(parsed);data=parsed;index=0;loadFrame();persist()}catch(e){message(e.message)}};
+document.addEventListener('keydown',e=>{if(['INPUT','TEXTAREA','SELECT'].includes(e.target.tagName)||e.ctrlKey||e.metaKey||e.altKey)return;const actions={ArrowLeft:()=>change(index-1),ArrowRight:()=>change(index+1),'1':()=>decide('correct'),'2':()=>decide('edit'),'3':()=>decide('unreadable'),'4':()=>decide('no_plate'),b:()=>$('accept-box').click(),s:()=>$('save').click()};if(actions[e.key]){e.preventDefault();actions[e.key]()}});
+try{const saved=localStorage.getItem(storageKey);if(saved){const p=JSON.parse(saved);assertInventory(p.data);data=p.data;index=Math.max(0,Math.min(p.index,data.frames.length-1));restoring=true;loadFrame();restoring=false;$('autosave').textContent='Đã khôi phục bản tự lưu';}}catch(e){message('Không nạp tự lưu: '+e.message+'; giữ bản hiện tại.')}
+change(index);
+
+$('save').onclick=()=>{data.label_origin='manual_review';if(data.frames.some(f=>typeof f.scene_hash!=='string')){message('scene_hash phải là chuỗi');return}const name=data.sources.length===1?(data.sources[0].source_id==='greenparking'?'motorcycle':data.sources[0].source_id):'camera185';download('labels.d05j.'+name+'.json',JSON.stringify(data,null,2),'application/json')};

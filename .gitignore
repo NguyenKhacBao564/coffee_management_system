@@ -1,0 +1,29 @@
+.env
+.env.*
+!.env.example
+.venv/
+.venv-training/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+node_modules/
+dist/
+.playwright-cli/
+.DS_Store
+*.log
+data/
+uploads/
+*.sqlite3
+# Local camera input and offline evidence/model weights must not enter Git.
+Video_camera/
+output/playwright/d05a/
+output/playwright/d05b/
+
+# Local environments, generated evidence and site-specific camera configuration
+.venv-*/
+output/
+edge-agent/config/camera-185*.json

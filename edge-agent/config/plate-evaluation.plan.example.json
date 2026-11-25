@@ -1,0 +1,13 @@
+{
+  "dataset_sha256": "REPLACE_AFTER_REVIEW_AND_SPLIT_FREEZE",
+  "model_manifest_sha256": "REPLACE_AFTER_VALIDATION_CHECKPOINT_SELECTION",
+  "selection_split": "val",
+  "evaluate_split": "val",
+  "input_scope": "full_native_frame",
+  "match_iou": 0.5,
+  "baseline_threshold": 0.25,
+  "pilot_threshold": 0.25,
+  "pilot_nms": 0.45,
+  "thresholds_and_checkpoint_frozen_before_test": false,
+  "note": "Thresholds are initial validation candidates, not selected test values. Write a separate frozen plan before inspecting test results. Do not compare confidence across model families."
+}

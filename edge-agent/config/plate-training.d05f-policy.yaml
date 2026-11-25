@@ -1,0 +1,5 @@
+camera_max_fraction: 0.2
+camera_repeats_per_epoch: 1
+camera_variants_per_frame_per_epoch: 1
+augmentation: light_photometric_v1
+selection_split: public_val

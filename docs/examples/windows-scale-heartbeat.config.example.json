@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "interval_seconds": 30,
+  "request_timeout_seconds": 8,
+  "retry": {
+    "initial_backoff_seconds": 2,
+    "maximum_backoff_seconds": 30,
+    "jitter": true
+  },
+  "sequence_state_file": "%ProgramData%\\NhuTung\\ScaleAgent\\heartbeat-state.json",
+  "heartbeat_id_strategy": "uuid-v4-per-new-snapshot",
+  "replay_old_heartbeats": false,
+  "api_base_url": "<provided-at-install-time>",
+  "agent_token_source": "windows-credential-manager-or-restricted-secret-file",
+  "reader_status_values": ["starting", "ok", "empty", "error", "unavailable"],
+  "signal_contract": "unchanged-s02"
+}

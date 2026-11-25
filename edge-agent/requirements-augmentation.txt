@@ -1,0 +1,10 @@
+# D05j Phase D local preview/config preparation; no training framework.
+albumentations==2.0.8
+albucore==0.0.24
+numpy==2.2.6
+opencv-python-headless==4.12.0.88
+scipy==1.15.2
+pydantic==2.9.2
+PyYAML==6.0.2
+simsimd==6.5.16
+stringzilla==5.2.0
